@@ -109,3 +109,5 @@ environment.json
 
 # NetCore Webapi
 /**/WebApiLog*
+
+test_results/
