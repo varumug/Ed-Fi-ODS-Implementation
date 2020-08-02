@@ -10,6 +10,7 @@ using System.Linq;
 using System.Net;
 using DefaultNamespace;
 using Nuke.Common;
+using Nuke.Common.CI;
 using Nuke.Common.Execution;
 using Nuke.Common.Git;
 using Nuke.Common.IO;
@@ -20,6 +21,7 @@ using Nuke.Common.Tools.GitVersion;
 using Nuke.Common.Tools.MSBuild;
 using Nuke.Common.Tools.NuGet;
 using Nuke.Common.Tools.NUnit;
+using Nuke.Common.Utilities.Collections;
 using static Nuke.Common.Tools.MSBuild.MSBuildTasks;
 using static Nuke.Common.Tools.NuGet.NuGetTasks;
 using static Nuke.Common.IO.FileSystemTasks;
@@ -44,7 +46,9 @@ class Build : NukeBuild
 
     [Parameter("Database Engine - Default 'SQLServer' or 'PostgreSQL'")] readonly Engine Engine = Engine.SQLServer;
 
-    [Parameter("Exclude Code - Default false")] readonly bool ExcludeCodeGen = false;
+    [Parameter("Exclude Code - Default false")] readonly bool NoCodeGen = false;
+
+    [Parameter("MsBuild Verbosity - Default Minimal")] readonly  MSBuildVerbosity Verbosity = MSBuildVerbosity.Minimal;
 
     [Solution] readonly Solution Solution;
 
@@ -69,6 +73,7 @@ class Build : NukeBuild
                 Logger.Info($"ODS Source Directory ==> {OdsDirectory}");
                 Logger.Info($"Implementation Source Directory ==> {ImplementationDirectory}");
 
+                EnsureCleanDirectory(ToolsDirectory);
                 EnsureCleanDirectory(TestResultsDirectory);
                 EnsureCleanDirectory(ArtifactsDirectory);
             });
@@ -102,6 +107,7 @@ class Build : NukeBuild
                     .SetFileVersion(GitVersion.AssemblySemFileVer)
                     .SetInformationalVersion(GitVersion.InformationalVersion)
                     .SetMaxCpuCount(MaxCpuCount)
+                    .SetVerbosity(Verbosity)
                     .EnableNodeReuse());
 
                 // In the future we want to use dotnet build
@@ -114,8 +120,11 @@ class Build : NukeBuild
                 //     .EnableNoRestore());
             });
 
+    [Partition(2)] readonly Partition TestPartition;
+
     Target NUnitIntegrationTest
         => _ => _
+            .Produces(TestResultsDirectory / "*.xml")
             .Executes(() =>
             {
                 var assembliesToTest = GetTestDirectories().Value
@@ -133,13 +142,13 @@ class Build : NukeBuild
                     .SetDisposeRunners(true)
                     .SetAgents(1)
                     .SetSkipNonTestAssemblies(true)
-                    .SetStopOnError(true));
-
-                File.Move(RootDirectory/"TestResult.xml", TestResultsDirectory / "nunit-integrationtests.xml", true);
+                    .SetStopOnError(true)
+                    .SetResults(TestResultsDirectory / "nunit-integrationtests.xml"));
             });
 
     Target NUnitWebServiceIntegrationTest
         => _ => _
+            .Produces(TestResultsDirectory / "*.xml")
             .Executes(() =>
             {
                 var assembliesToTest = GetTestDirectories().Value.Where(x => x.Contains("EdFi.Ods.WebService.Tests"))
@@ -153,9 +162,8 @@ class Build : NukeBuild
                     .SetDisposeRunners(true)
                     .SetAgents(1)
                     .SetSkipNonTestAssemblies(true)
-                    .SetStopOnError(true));
-
-                File.Move(RootDirectory/"TestResult.xml", TestResultsDirectory / "nunit-webservicetests.xml", true);
+                    .SetStopOnError(true)
+                    .SetResults(TestResultsDirectory / "nunit-webservicetests.xml"));
             });
 
     Target NUnitUnitTests
@@ -173,15 +181,14 @@ class Build : NukeBuild
                     .SetAgents(MaxCpuCount)
                     .SetSkipNonTestAssemblies(true)
                     .SetStopOnError(true)
-                );
-
-                File.Move(RootDirectory/"TestResult.xml", TestResultsDirectory / "nunit-unittests.xml", true);
+                    .SetResults(TestResultsDirectory / "nunit-unittests.xml"));
             });
 
     Target Test
         => _ => _
             .Triggers(NUnitIntegrationTest, NUnitUnitTests, NUnitWebServiceIntegrationTest)
-            .DependsOn(Compile)
+            .Partition(() => TestPartition)
+            .Produces(TestResultsDirectory / "*.xml")
             .Executes(() =>
             {
                 var projectsToTest = GetTestDirectories().Value
@@ -190,13 +197,13 @@ class Build : NukeBuild
                     .SelectMany(t => GlobFiles(t, "*.csproj"));
 
                 DotNetTest(s =>
-                    s.SetConfiguration(Configuration)
-                    .SetNoRestore(true)
-                    .SetNoBuild(true)
-                    .SetResultsDirectory(TestResultsDirectory)
-                    .SetDataCollector()
-                    .CombineWith(projectsToTest, (settings, path) =>
-                        settings.SetProjectFile(path)), degreeOfParallelism: 4, completeOnFailure: false);
+                        s.SetConfiguration(Configuration)
+                            .SetNoRestore(true)
+                            .SetNoBuild(true)
+                            .SetResultsDirectory(TestResultsDirectory)
+                            .CombineWith(TestPartition.GetCurrent(projectsToTest),
+                                (settings, path) => settings.SetProjectFile(path)),
+                    degreeOfParallelism: 4, completeOnFailure: false);
             });
 
     Target InstallNuGetExe
@@ -205,6 +212,7 @@ class Build : NukeBuild
             {
                 DownloadFileToToolsDirectory("https://dist.nuget.org/win-x86-commandline/v5.3.1/", "nuget.exe");
             });
+
     Target InstallCodeGen
         => _ => _
             .Executes(() =>
@@ -216,7 +224,7 @@ class Build : NukeBuild
         => _ => _
             .Executes(() =>
             {
-                InstallTool("edfi.db.deploy.suite3","2.0.0-b10015");
+                InstallTool("edfi.db.deploy.suite3", "2.0.0-b10015");
             });
 
     Target InstallConfigTransformerCore
@@ -229,12 +237,17 @@ class Build : NukeBuild
     Target InstallTools
         => _ => _
             .Triggers(InstallCodeGen, InstallDbDeploy, InstallConfigTransformerCore);
+
     Target RunCodeGen
         => _ => _
-            .Requires(() => !ExcludeCodeGen)
-            .DependsOn(InstallCodeGen)
             .Executes(() =>
             {
+                if (NoCodeGen)
+                {
+                    Logger.Info("CodeGen skipped");
+                    return;
+                }
+
                 var codegen = ToolResolver.GetLocalTool(ToolsDirectory / "edfi.ods.codegen.exe");
                 string arguments = $" -r {RootDirectory.Parent} -e {Engine}";
                 Logger.Trace(arguments);
@@ -269,6 +282,8 @@ class Build : NukeBuild
             uri = uri + "/";
 
         var webClient = new WebClient();
+        Logger.Info($"Downloading {uri}{filename} to {ToolsDirectory / filename}");
         webClient.DownloadFile($"{uri}{filename}", ToolsDirectory / filename);
+        FileExists(ToolsDirectory / filename);
     }
 }
