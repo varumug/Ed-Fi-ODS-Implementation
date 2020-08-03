@@ -48,7 +48,7 @@ class Build : NukeBuild
 
     [Parameter("Exclude Code - Default false")] readonly bool NoCodeGen = false;
 
-    [Parameter("MsBuild Verbosity - Default Minimal")] readonly  MSBuildVerbosity Verbosity = MSBuildVerbosity.Minimal;
+    [Parameter("MsBuild Verbosity - Default Minimal")] readonly MSBuildVerbosity Verbosity = MSBuildVerbosity.Minimal;
 
     [Solution] readonly Solution Solution;
 
@@ -202,7 +202,8 @@ class Build : NukeBuild
                             .SetNoBuild(true)
                             .SetResultsDirectory(TestResultsDirectory)
                             .CombineWith(TestPartition.GetCurrent(projectsToTest),
-                                (settings, path) => settings.SetProjectFile(path)),
+                                (settings, path) => settings.SetProjectFile(path)
+                                    .SetLogger($"trx;LogFileName={Path.GetFileNameWithoutExtension(path)}.xml")),
                     degreeOfParallelism: 4, completeOnFailure: false);
             });
 
@@ -210,28 +211,28 @@ class Build : NukeBuild
         => _ => _
             .Executes(() =>
             {
-                DownloadFileToToolsDirectory("https://dist.nuget.org/win-x86-commandline/v5.3.1/", "nuget.exe");
+                ToolsHelper.DownloadFileToToolsDirectory("https://dist.nuget.org/win-x86-commandline/v5.3.1/", "nuget.exe", ToolsDirectory);
             });
 
     Target InstallCodeGen
         => _ => _
             .Executes(() =>
             {
-                InstallTool("edfi.ods.codegen.suite3", "5.0.0-b10307");
+                ToolsHelper.InstallTool("edfi.ods.codegen.suite3", "5.0.0-b10307", ToolsDirectory);
             });
 
     Target InstallDbDeploy
         => _ => _
             .Executes(() =>
             {
-                InstallTool("edfi.db.deploy.suite3", "2.0.0-b10015");
+                ToolsHelper.InstallTool("edfi.db.deploy.suite3", "2.0.0-b10015", ToolsDirectory);
             });
 
     Target InstallConfigTransformerCore
         => _ => _
             .Executes(() =>
             {
-                InstallTool("ConfigTransformerCore", "2.0.0");
+                ToolsHelper.InstallTool("ConfigTransformerCore", "2.0.0", ToolsDirectory);
             });
 
     Target InstallTools
@@ -268,22 +269,5 @@ class Build : NukeBuild
     Lazy<string> GetNUnitExeFullPath()
         => new Lazy<string>(() => ToolPathResolver.GetPackageExecutable("nunit.consolerunner", "nunit3-console.exe", "3.11.1"));
 
-    void InstallTool(string toolName, string version)
-    {
-        var source = "https://www.myget.org/F/ed-fi/";
 
-        SuppressErrors(() => DotNet($"tool uninstall {toolName} --tool-path {ToolsDirectory}"), false);
-        DotNet($"tool install {toolName} --tool-path {ToolsDirectory} --version {version} --add-source {source}");
-    }
-
-    void DownloadFileToToolsDirectory(string uri, string filename)
-    {
-        if (!uri.EndsWith("/"))
-            uri = uri + "/";
-
-        var webClient = new WebClient();
-        Logger.Info($"Downloading {uri}{filename} to {ToolsDirectory / filename}");
-        webClient.DownloadFile($"{uri}{filename}", ToolsDirectory / filename);
-        FileExists(ToolsDirectory / filename);
-    }
 }
