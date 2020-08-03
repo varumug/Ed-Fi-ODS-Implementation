@@ -34,7 +34,15 @@ using static Nuke.Common.ControlFlow;
 
 [CheckBuildProjectConfigurations]
 [UnsetVisualStudioEnvironmentVariables]
-[TeamCity(TeamCityAgentPlatform.Windows, VcsTriggeredTargets = new []{ nameof(Clean), nameof(Compile), nameof(Test)})]
+[TeamCity(TeamCityAgentPlatform.Windows,
+    VcsTriggeredTargets = new[] {nameof(Test)},
+    NonEntryTargets =new[]
+    {
+        nameof(InstallTools),
+        nameof(Restore),
+        nameof(Clean),
+        nameof(RunCodeGen)
+    })]
 class Build : NukeBuild
 {
     [Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
@@ -69,8 +77,7 @@ class Build : NukeBuild
 
     Target Clean
         => _ => _
-            .Before(Restore)
-            .Triggers(InstallTools, Restore, RestoreNuGetPackages, InstallNuGetExe)
+            .Before(InstallTools, Restore)
             .Executes(() =>
             {
                 Logger.Info($"ODS Source Directory ==> {OdsDirectory}");
@@ -81,25 +88,19 @@ class Build : NukeBuild
                 EnsureCleanDirectory(ArtifactsDirectory);
             });
 
-    // in the future we can remove this once we are fully net core
-    Target RestoreNuGetPackages
-        => _ => _
-            .Executes(() =>
-            {
-                NuGetRestore(s => s.SetTargetPath(Solution)
-                    .SetToolPath(ToolsDirectory / "nuget.exe"));
-            });
-
     Target Restore
         => _ => _
             .Executes(() =>
             {
                 DotNetRestore(s => s.SetProjectFile(Solution));
+
+                NuGetRestore(s => s.SetTargetPath(Solution)
+                    .SetToolPath(ToolsDirectory / "nuget.exe"));
             });
 
     Target Compile
         => _ => _
-            .After(RunCodeGen)
+            .DependsOn(Clean, Restore, InstallTools, RunCodeGen)
             .Executes(() =>
             {
                 MSBuild(o => o
@@ -134,6 +135,7 @@ class Build : NukeBuild
                     .Where(x => !x.EndsWith("UnitTests", StringComparison.InvariantCultureIgnoreCase)
                                 && !x.Contains("NetCore", StringComparison.InvariantCultureIgnoreCase)
                                 && !x.Contains("EdFi.Ods.Tests", StringComparison.InvariantCultureIgnoreCase)
+                                && !x.Contains("DataAccess", StringComparison.InvariantCultureIgnoreCase)
                                 && !x.Contains("EdFi.Ods.WebService.Tests"))
                     .SelectMany(t => GlobFiles(t, $"**/bin/{Configuration}/**/*Tests.dll"))
                     .Where(a => !a.EndsWith("ApprovalTests.dll", StringComparison.InvariantCultureIgnoreCase));
@@ -189,7 +191,7 @@ class Build : NukeBuild
 
     Target Test
         => _ => _
-            .After(Compile)
+            .DependsOn(Compile)
             .Triggers(NUnitIntegrationTest, NUnitUnitTests, NUnitWebServiceIntegrationTest)
             .Partition(() => TestPartition)
             .Produces(TestResultsDirectory / "*.xml")
@@ -197,7 +199,8 @@ class Build : NukeBuild
             {
                 var projectsToTest = GetTestDirectories().Value
                     .Where(x => x.EndsWith("UnitTests", StringComparison.InvariantCultureIgnoreCase)
-                                || x.Contains("NetCore", StringComparison.InvariantCultureIgnoreCase))
+                                || x.Contains("NetCore", StringComparison.InvariantCultureIgnoreCase)
+                                || x.Contains("DataAccess", StringComparison.InvariantCultureIgnoreCase))
                     .SelectMany(t => GlobFiles(t, "*.csproj"));
 
                 DotNetTest(s =>
@@ -211,42 +214,21 @@ class Build : NukeBuild
                     degreeOfParallelism: 4, completeOnFailure: false);
             });
 
-    Target InstallNuGetExe
+    Target InstallTools
         => _ => _
             .Executes(() =>
             {
-                ToolsHelper.DownloadFileToToolsDirectory("https://dist.nuget.org/win-x86-commandline/v5.3.1/", "nuget.exe", ToolsDirectory);
-            });
+                ToolsHelper.DownloadFileToToolsDirectory("https://dist.nuget.org/win-x86-commandline/v5.3.1/", "nuget.exe",
+                    ToolsDirectory);
 
-    Target InstallCodeGen
-        => _ => _
-            .Before(RunCodeGen)
-            .Executes(() =>
-            {
                 ToolsHelper.InstallTool("edfi.ods.codegen.suite3", "5.0.0-b10307", ToolsDirectory);
-            });
-
-    Target InstallDbDeploy
-        => _ => _
-            .Executes(() =>
-            {
                 ToolsHelper.InstallTool("edfi.db.deploy.suite3", "2.0.0-b10015", ToolsDirectory);
-            });
-
-    Target InstallConfigTransformerCore
-        => _ => _
-            .Executes(() =>
-            {
                 ToolsHelper.InstallTool("ConfigTransformerCore", "2.0.0", ToolsDirectory);
             });
 
-    Target InstallTools
-        => _ => _
-            .Triggers(InstallCodeGen, InstallDbDeploy, InstallConfigTransformerCore, RunCodeGen);
-
     Target RunCodeGen
         => _ => _
-            .Before(Compile)
+            .DependsOn(InstallTools)
             .Executes(() =>
             {
                 if (NoCodeGen)
@@ -274,6 +256,4 @@ class Build : NukeBuild
 
     Lazy<string> GetNUnitExeFullPath()
         => new Lazy<string>(() => ToolPathResolver.GetPackageExecutable("nunit.consolerunner", "nunit3-console.exe", "3.11.1"));
-
-
 }

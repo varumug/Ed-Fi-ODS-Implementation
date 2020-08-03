@@ -23,15 +23,6 @@ import jetbrains.buildServer.configs.kotlin.v2018_1.vcs.*
 version = "2018.2"
 
 project {
-    buildType(Clean)
-    buildType(InstallTools)
-    buildType(InstallCodeGen)
-    buildType(RunCodeGen)
-    buildType(InstallConfigTransformerCore)
-    buildType(InstallDbDeploy)
-    buildType(InstallNuGetExe)
-    buildType(Restore)
-    buildType(RestoreNuGetPackages)
     buildType(Compile)
     buildType(Test_P1T2)
     buildType(Test_P2T2)
@@ -40,7 +31,7 @@ project {
     buildType(NUnitWebServiceIntegrationTest)
     buildType(NUnitIntegrationTest)
 
-    buildTypesOrder = arrayListOf(Clean, InstallTools, InstallCodeGen, RunCodeGen, InstallConfigTransformerCore, InstallDbDeploy, InstallNuGetExe, Restore, RestoreNuGetPackages, Compile, Test_P1T2, Test_P2T2, Test, NUnitUnitTests, NUnitWebServiceIntegrationTest, NUnitIntegrationTest)
+    buildTypesOrder = arrayListOf(Compile, Test_P1T2, Test_P2T2, Test, NUnitUnitTests, NUnitWebServiceIntegrationTest, NUnitIntegrationTest)
 
     params {
         select (
@@ -92,168 +83,6 @@ project {
         )
     }
 }
-object Clean : BuildType({
-    name = "Clean"
-    vcs {
-        root(DslContext.settingsRoot)
-        cleanCheckout = true
-    }
-    steps {
-        exec {
-            path = "build.cmd"
-            arguments = "Clean --skip"
-        }
-    }
-    triggers {
-        vcs {
-            triggerRules = "+:**"
-        }
-    }
-})
-object InstallTools : BuildType({
-    name = "InstallTools"
-    vcs {
-        root(DslContext.settingsRoot)
-        cleanCheckout = true
-    }
-    steps {
-        exec {
-            path = "build.cmd"
-            arguments = "InstallTools --skip"
-        }
-    }
-    triggers {
-        finishBuildTrigger {
-            buildType = "${Clean.id}"
-        }
-    }
-})
-object InstallCodeGen : BuildType({
-    name = "InstallCodeGen"
-    vcs {
-        root(DslContext.settingsRoot)
-        cleanCheckout = true
-    }
-    steps {
-        exec {
-            path = "build.cmd"
-            arguments = "InstallCodeGen --skip"
-        }
-    }
-    triggers {
-        finishBuildTrigger {
-            buildType = "${InstallTools.id}"
-        }
-    }
-})
-object RunCodeGen : BuildType({
-    name = "RunCodeGen"
-    vcs {
-        root(DslContext.settingsRoot)
-        cleanCheckout = true
-    }
-    steps {
-        exec {
-            path = "build.cmd"
-            arguments = "RunCodeGen --skip"
-        }
-    }
-    triggers {
-        finishBuildTrigger {
-            buildType = "${InstallTools.id}"
-        }
-    }
-})
-object InstallConfigTransformerCore : BuildType({
-    name = "InstallConfigTransformerCore"
-    vcs {
-        root(DslContext.settingsRoot)
-        cleanCheckout = true
-    }
-    steps {
-        exec {
-            path = "build.cmd"
-            arguments = "InstallConfigTransformerCore --skip"
-        }
-    }
-    triggers {
-        finishBuildTrigger {
-            buildType = "${InstallTools.id}"
-        }
-    }
-})
-object InstallDbDeploy : BuildType({
-    name = "InstallDbDeploy"
-    vcs {
-        root(DslContext.settingsRoot)
-        cleanCheckout = true
-    }
-    steps {
-        exec {
-            path = "build.cmd"
-            arguments = "InstallDbDeploy --skip"
-        }
-    }
-    triggers {
-        finishBuildTrigger {
-            buildType = "${InstallTools.id}"
-        }
-    }
-})
-object InstallNuGetExe : BuildType({
-    name = "InstallNuGetExe"
-    vcs {
-        root(DslContext.settingsRoot)
-        cleanCheckout = true
-    }
-    steps {
-        exec {
-            path = "build.cmd"
-            arguments = "InstallNuGetExe --skip"
-        }
-    }
-    triggers {
-        finishBuildTrigger {
-            buildType = "${Clean.id}"
-        }
-    }
-})
-object Restore : BuildType({
-    name = "Restore"
-    vcs {
-        root(DslContext.settingsRoot)
-        cleanCheckout = true
-    }
-    steps {
-        exec {
-            path = "build.cmd"
-            arguments = "Restore --skip"
-        }
-    }
-    triggers {
-        finishBuildTrigger {
-            buildType = "${Clean.id}"
-        }
-    }
-})
-object RestoreNuGetPackages : BuildType({
-    name = "RestoreNuGetPackages"
-    vcs {
-        root(DslContext.settingsRoot)
-        cleanCheckout = true
-    }
-    steps {
-        exec {
-            path = "build.cmd"
-            arguments = "RestoreNuGetPackages --skip"
-        }
-    }
-    triggers {
-        finishBuildTrigger {
-            buildType = "${Clean.id}"
-        }
-    }
-})
 object Compile : BuildType({
     name = "Compile"
     vcs {
@@ -263,12 +92,7 @@ object Compile : BuildType({
     steps {
         exec {
             path = "build.cmd"
-            arguments = "Compile --skip"
-        }
-    }
-    triggers {
-        vcs {
-            triggerRules = "+:**"
+            arguments = "Clean InstallTools RunCodeGen Restore Compile --skip"
         }
     }
 })
@@ -285,6 +109,12 @@ object Test_P1T2 : BuildType({
             arguments = "Test --skip --test-partition 1"
         }
     }
+    dependencies {
+        snapshot(Compile) {
+            onDependencyFailure = FailureAction.FAIL_TO_START
+            onDependencyCancel = FailureAction.CANCEL
+        }
+    }
 })
 object Test_P2T2 : BuildType({
     name = "Test 2/2"
@@ -297,6 +127,12 @@ object Test_P2T2 : BuildType({
         exec {
             path = "build.cmd"
             arguments = "Test --skip --test-partition 2"
+        }
+    }
+    dependencies {
+        snapshot(Compile) {
+            onDependencyFailure = FailureAction.FAIL_TO_START
+            onDependencyCancel = FailureAction.CANCEL
         }
     }
 })
