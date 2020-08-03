@@ -96,7 +96,7 @@ class Build : NukeBuild
 
     Target Compile
         => _ => _
-            .DependsOn(RunCodeGen)
+            .After(RunCodeGen)
             .Executes(() =>
             {
                 MSBuild(o => o
@@ -186,6 +186,7 @@ class Build : NukeBuild
 
     Target Test
         => _ => _
+            .After(Compile)
             .Triggers(NUnitIntegrationTest, NUnitUnitTests, NUnitWebServiceIntegrationTest)
             .Partition(() => TestPartition)
             .Produces(TestResultsDirectory / "*.xml")
@@ -216,6 +217,7 @@ class Build : NukeBuild
 
     Target InstallCodeGen
         => _ => _
+            .Before(RunCodeGen)
             .Executes(() =>
             {
                 ToolsHelper.InstallTool("edfi.ods.codegen.suite3", "5.0.0-b10307", ToolsDirectory);
@@ -237,10 +239,11 @@ class Build : NukeBuild
 
     Target InstallTools
         => _ => _
-            .Triggers(InstallCodeGen, InstallDbDeploy, InstallConfigTransformerCore);
+            .Triggers(InstallCodeGen, InstallDbDeploy, InstallConfigTransformerCore, RunCodeGen);
 
     Target RunCodeGen
         => _ => _
+            .Before(Compile)
             .Executes(() =>
             {
                 if (NoCodeGen)
