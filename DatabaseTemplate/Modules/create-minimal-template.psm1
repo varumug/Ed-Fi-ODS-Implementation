@@ -19,7 +19,7 @@ function Get-MinimalConfiguration {
     $config.testHarnessJsonConfigLEAs = @()
 
     $config.Remove('bulkLoadTempDirectorySample')
-    $config.bulkLoadBootstrapInterchanges = @("InterchangeDescriptors")
+    $config.bulkLoadBootstrapInterchanges = @("InterchangeStandards")
 
     $config.databaseBackupName = "EdFi.Ods.Minimal.Template"
     $config.packageNuspecName = "EdFi.Ods.Minimal.Template"
