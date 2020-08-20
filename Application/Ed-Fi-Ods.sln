@@ -26,7 +26,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EdFi.Ods.SandboxAdmin.Web",
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EdFi.Ods.Admin", "..\..\Ed-Fi-ODS\Application\EdFi.Ods.Admin\EdFi.Ods.Admin.csproj", "{D0335B4F-B79B-4CCB-AB11-A4106C070513}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EdFi.Ods.Tests", "..\..\Ed-Fi-ODS\Application\EdFi.Ods.Tests\EdFi.Ods.Tests.csproj", "{06D25DDA-12C5-4EFA-AB3D-FDF08AE7A432}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EdFi.Ods.NetFramework.Tests", "..\..\Ed-Fi-ODS\Application\EdFi.Ods.NetFramework.Tests\EdFi.Ods.NetFramework.Tests.csproj", "{06D25DDA-12C5-4EFA-AB3D-FDF08AE7A432}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Integration", "Integration", "{3AD03A98-4A2C-42F1-997D-2468A0CCB77D}"
 EndProject
