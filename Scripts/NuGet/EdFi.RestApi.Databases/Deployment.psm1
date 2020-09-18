@@ -13,7 +13,7 @@ $script:deploymentSettingsOverrides = @{ }
 function Initialize-DeploymentEnvironment {
     <#
     .description
-    Deploy databases from the EdFi.RestApi.Databases NuGet package created by .\prep-package.ps1
+    Deploy databases from the EdFi.RestApi.Databases NuGet package created by ./prep-package.ps1
     .parameter PathResolverRepositoryOverride
     A semicolon-separated string of repositories to pass to path-resolver, such as 'Ed-Fi-ODS;Ed-Fi-Ods-Implementation'
     .parameter InstallType
@@ -66,9 +66,9 @@ function Initialize-DeploymentEnvironment {
     )
 
     # if path-resolver is not present assume that the script is being ran in a deployment scenario
-    # from inside the EdFi.RestApi.Databases NuGet Package created by .\prep-package.ps1
+    # from inside the EdFi.RestApi.Databases NuGet Package created by ./prep-package.ps1
     if (-not (Get-Module | Where-Object -Property Name -eq 'path-resolver')) {
-        $pathResolver = (Get-ChildItem "$PSScriptRoot\*\logistics\scripts\modules\load-path-resolver.ps1" | Select-Object -Last 1)
+        $pathResolver = (Get-ChildItem "$PSScriptRoot/*/logistics/scripts/modules/load-path-resolver.ps1" | Select-Object -Last 1)
 
         if ([string]::IsNullOrWhiteSpace($PathResolverRepositoryOverride)) {
             & $pathResolver
@@ -81,12 +81,12 @@ function Initialize-DeploymentEnvironment {
         if ($Engine -eq 'PostgreSQL') { Set-DeployConfigFile (Join-Path $PSScriptRoot 'Databases.Npgsql.config') }
     }
 
-    Import-Module -Force -Scope Global (Get-RepositoryResolvedPath 'DatabaseTemplate\Modules\database-template-source.psm1')
-    Import-Module -Force -Scope Global (Get-RepositoryResolvedPath 'logistics\scripts\modules\config\config-management.psm1')
-    Import-Module -Force -Scope Global (Get-RepositoryResolvedPath 'logistics\scripts\modules\database\database-lifecycle.psm1')
-    Import-Module -Force -Scope Global (Get-RepositoryResolvedPath 'logistics\scripts\modules\tools\ToolsHelper.psm1')
-    Import-Module -Force -Scope Global (Get-RepositoryResolvedPath "logistics\scripts\modules\tasks\TaskHelper.psm1")
-    Import-Module -Force -Scope Global (Get-RepositoryResolvedPath 'logistics\scripts\modules\utility\hashtable.psm1')
+    Import-Module -Force -Scope Global (Get-RepositoryResolvedPath 'DatabaseTemplate/Modules/database-template-source.psm1')
+    Import-Module -Force -Scope Global (Get-RepositoryResolvedPath 'logistics/scripts/modules/config/config-management.psm1')
+    Import-Module -Force -Scope Global (Get-RepositoryResolvedPath 'logistics/scripts/modules/database/database-lifecycle.psm1')
+    Import-Module -Force -Scope Global (Get-RepositoryResolvedPath 'logistics/scripts/modules/tools/ToolsHelper.psm1')
+    Import-Module -Force -Scope Global (Get-RepositoryResolvedPath "logistics/scripts/modules/tasks/TaskHelper.psm1")
+    Import-Module -Force -Scope Global (Get-RepositoryResolvedPath 'logistics/scripts/modules/utility/hashtable.psm1')
 
     Write-InvocationInfo $MyInvocation
 
@@ -145,7 +145,7 @@ function Set-DeploymentSettingsFiles([string[]] $DeploymentSettingsFiles) {
         when using initdev this uses
             appsettings.json, appsettings.development.json, appsettings.user.json from the EdFi.Ods.WebApi project
         when using EdFi.RestApi.Databases for deployment this uses
-            Ed-Fi-ODS-Implementation\Scripts\NuGet\EdFi.RestApi.Databases\configuration.json
+            Ed-Fi-ODS-Implementation/Scripts/NuGet/EdFi.RestApi.Databases/configuration.json
     #>
 
     $script:deploymentSettingsFiles = $DeploymentSettingsFiles
