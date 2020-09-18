@@ -8,6 +8,8 @@ LABEL maintainer="jmckay@certicasolutions.com"
 
 ARG ODS_REPO=https://github.com/Ed-Fi-Alliance-OSS/Ed-Fi-ODS/archive/main.zip
 ARG IMP_REPO=https://github.com/Ed-Fi-Alliance-OSS/Ed-Fi-ODS-implementation/archive/main.zip
+ARG ODS_BRANCH=main
+ARG IMP_BRANCH=main
 
 # update the image packages to latests
 RUN apk update && apk upgrade && apk add unzip --no-cache
@@ -20,12 +22,12 @@ WORKDIR /src
 
 RUN wget ${ODS_REPO} -O ed-fi-ods.zip \
 && unzip ed-fi-ods.zip -d . \
-&& mv Ed-Fi-ODS-main Ed-Fi-ODS \
+&& mv Ed-Fi-ODS-${ODS_BRANCH} Ed-Fi-ODS \
 && rm ed-fi-ods.zip
 
 RUN wget ${IMP_REPO} -O ed-fi-ods-implementation.zip \
 && unzip ed-fi-ods-implementation.zip -d . \
-&& mv Ed-Fi-ODS-Implementation-main Ed-Fi-ODS-Implementation \
+&& mv Ed-Fi-ODS-Implementation-${IMP_BRANCH} Ed-Fi-ODS-Implementation \
 && rm ed-fi-ods-implementation.zip
 
 # COPY ./Ed-Fi-ODS ./src/Ed-Fi-ODS

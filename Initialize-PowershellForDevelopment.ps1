@@ -5,10 +5,11 @@
 
 #Requires -Version 5.0
 
-Write-Host (Join-Path $PSScriptRoot "logistics/scripts/modules/path-resolver.psm1")
+$pathResolver = Resolve-Path (Join-Path $PSScriptRoot "logistics/scripts/modules/path-resolver.psm1")
+$solutionScripts = Resolve-Path (Join-Path $PSScriptRoot "Application/SolutionScripts")
 
-Import-Module -Force -Scope Global (Join-Path $PSScriptRoot "logistics/scripts/modules/path-resolver.psm1")
-$global:SolutionScriptsDir = Resolve-Path (Join-Path $PSScriptRoot "Application/SolutionScripts")
+Import-Module -Force -Scope Global $pathResolver.Path
+[global]::SolutionScriptsDir = $solutionScripts
 
 function Find-BlockedFiles {
 
