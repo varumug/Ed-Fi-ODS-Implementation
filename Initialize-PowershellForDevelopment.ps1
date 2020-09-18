@@ -5,8 +5,10 @@
 
 #Requires -Version 5.0
 
-Import-Module -Force -Scope Global "logistics\scripts\modules\path-resolver.psm1"
-$global:SolutionScriptsDir = Resolve-Path "Application\SolutionScripts"
+Write-Host (Join-Path $PSScriptRoot "logistics/scripts/modules/path-resolver.psm1")
+
+Import-Module -Force -Scope Global (Join-Path $PSScriptRoot "logistics/scripts/modules/path-resolver.psm1")
+$global:SolutionScriptsDir = Resolve-Path (Join-Path $PSScriptRoot "Application/SolutionScripts")
 
 function Find-BlockedFiles {
 
@@ -15,7 +17,7 @@ function Find-BlockedFiles {
     }
 
     ForEach ($repository in Get-RepositoryNames) {
-        $zoneIdentifierFiles = Get-ChildItem -Path ..\$repository -recurse -Include *.ps1, *.psm1 |
+        $zoneIdentifierFiles = Get-ChildItem -Path (Resolve-Path (Join-Path $PSScriptRoot "../$repository")) -recurse -Include *.ps1, *.psm1 |
             Select-Object -Expand FullName | Get-Item -Stream "Zone.Identifier" -ErrorAction SilentlyContinue |
             Select-Object -ExpandProperty FileName |
             ForEach-Object { $_ + ":Zone.Identifier" }

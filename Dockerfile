@@ -6,6 +6,9 @@
 FROM mcr.microsoft.com/dotnet/core/sdk:3.1-alpine
 LABEL maintainer="jmckay@certicasolutions.com"
 
+ARG ODS_REPO=https://github.com/Ed-Fi-Alliance-OSS/Ed-Fi-ODS/archive/main.zip
+ARG IMP_REPO=https://github.com/Ed-Fi-Alliance-OSS/Ed-Fi-ODS-implementation/archive/main.zip
+
 # update the image packages to latests
 RUN apk update && apk upgrade && apk add unzip --no-cache
 
@@ -15,12 +18,12 @@ RUN apk update && apk upgrade && apk add unzip --no-cache
 
 WORKDIR /src
 
-RUN wget https://github.com/Ed-Fi-Alliance-OSS/Ed-Fi-ODS/archive/main.zip -O ed-fi-ods.zip \
+RUN wget ${ODS_REPO} -O ed-fi-ods.zip \
 && unzip ed-fi-ods.zip -d . \
 && mv Ed-Fi-ODS-main Ed-Fi-ODS \
 && rm ed-fi-ods.zip
 
-RUN wget https://github.com/Ed-Fi-Alliance-OSS/Ed-Fi-ODS-implementation/archive/main.zip -O ed-fi-ods-implementation.zip \
+RUN wget ${IMP_REPO} -O ed-fi-ods-implementation.zip \
 && unzip ed-fi-ods-implementation.zip -d . \
 && mv Ed-Fi-ODS-Implementation-main Ed-Fi-ODS-Implementation \
 && rm ed-fi-ods-implementation.zip
