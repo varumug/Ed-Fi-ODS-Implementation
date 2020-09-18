@@ -38,7 +38,7 @@ param(
 
 #Resolve if overrides or defaults are required
 if ($null -eq $repositoryNames) {
-    $repositoryNames = @('Ed-Fi-ODS', (Get-Item "$PSScriptRoot\..\..\..").Name)
+    $repositoryNames = @('Ed-Fi-ODS', (Get-Item "$PSScriptRoot/../../..").Name)
 }
 if ([string]::IsNullOrWhiteSpace($env:PathResolverRepositoryOverride)) {
     Write-Host "Using repositories: $($repositoryNames -join ', ')"
@@ -58,8 +58,8 @@ $invertedRepositoryNames = $repositoryNames.Clone()
 #in the value returned.
 function Get-AncestorItemPath ([string]$path, [string]$itemName) {
     #Remove Case Sensitivity
-    $path = $path.ToLower()
-    $itemName = $itemName.ToLower()
+    # $path = $path.ToLower()
+    # $itemName = $itemName.ToLower()
 
     $pos = $path.LastIndexOf("\$itemName\")
 
@@ -139,7 +139,7 @@ function Get-RootPath {
     #Look up from this script's location to find the highest level common named folder.
     $logisticsBasePath = Get-AncestorItemPath $PSScriptRoot "logistics"
     #Jump up two levels to get the root.
-    return Resolve-Path "$logisticsBasePath\..\..\"
+    return Resolve-Path "$logisticsBasePath/../../"
 }
 
 #Using the Root path for the repositories, return back the path for the $repositoryName specified.
@@ -344,8 +344,8 @@ function Select-RepositoryResolvedFiles {
     foreach ($repositoryName in $invertedRepositoryNames) {
         $outputHolder = @()
         $repositoryPath = Get-RootBasedRepositoryPath $repositoryName
-        If (Test-Path "$repositoryPath\$pathSuffix") {
-            $repositoryResolvedPath = Resolve-Path "$repositoryPath\$pathSuffix"
+        If (Test-Path "$repositoryPath/$pathSuffix") {
+            $repositoryResolvedPath = Resolve-Path "$repositoryPath/$pathSuffix"
             #Select all the files in the path that match the pattern where they are not listed in the index
             $outputHolder += gci -recurse:$recurse $repositoryResolvedPath -filter $filter | where { if (($namesTypes.Keys -contains ($_.FullName -Replace [regex]::Escape("$repositoryPath"), "")) -and ($namesTypes[($_.FullName -Replace [regex]::Escape("$repositoryPath"), "")] -eq $_.GetType())) { $false } else { $true } }
             #Add new files to index
@@ -506,8 +506,8 @@ function Select-SupportingArtifactSubTypeFiles {
 
     if (Test-Path $source) {
         foreach ($subType in $resolvedSubTypes) {
-            if (Test-Path "$source\$subType\") {
-                $output += Get-ChildItem "$source\$subType\" -filter $filter -recurse:$recurse
+            if (Test-Path "$source/$subType/") {
+                $output += Get-ChildItem "$source/$subType/" -filter $filter -recurse:$recurse
             }
         }
     }
@@ -610,11 +610,11 @@ function Select-SupportingArtifactResolvedFiles {
     foreach ($repositoryName in Get-RepositoryNames) {
         $repositoryPath = $(Get-RepositoryRoot $repositoryName)
 
-        $repositorySource = "$repositoryPath\$artifactType\$scriptType\$scriptTypeName"
+        $repositorySource = "$repositoryPath/$artifactType/$scriptType/$scriptTypeName"
         $output += Select-SupportingArtifactSubTypeFiles $repositorySource $subTypes -filter $filter -recurse:$recurse
 
         foreach ($artifactSource in $artifactSources) {
-            $extensionSource = "$repositoryPath\Application\EdFi.Ods.Extensions.$artifactSource\Artifacts\$scriptType\$scriptTypeName"
+            $extensionSource = "$repositoryPath/Application/EdFi.Ods.Extensions.$artifactSource/Artifacts/$scriptType/$scriptTypeName"
             $output += Select-SupportingArtifactSubTypeFiles $extensionSource $subTypes -filter $filter -recurse:$recurse
         }
     }
@@ -626,11 +626,11 @@ if (-not ($script:folders)) {
     $script:folders = @{ }
     #This is used in remote web deployments to find this path resolver and CANNOT be a delegate.
     $folders.core = Get-CorePath
-    $folders.scripts = [System.Func[Object, Object]] { return (Get-RepositoryResolvedPath "logistics\scripts\$($args[0])") }
+    $folders.scripts = [System.Func[Object, Object]] { return (Get-RepositoryResolvedPath "logistics/scripts/$($args[0])") }
     $folders.base = [System.Func[Object, Object]] { return (Get-RepositoryResolvedPath "$($args[0])") }
-    $folders.tools = [System.Func[Object, Object]] { return (Get-RepositoryResolvedPath "tools\$($args[0])") }
-    $folders.modules = [System.Func[Object, Object]] { return (Get-RepositoryResolvedPath "logistics\scripts\modules\$($args[0])") }
-    $folders.activities = [System.Func[Object, Object]] { return (Get-RepositoryResolvedPath "logistics\scripts\activities\$($args[0])") }
+    $folders.tools = [System.Func[Object, Object]] { return (Get-RepositoryResolvedPath "tools/$($args[0])") }
+    $folders.modules = [System.Func[Object, Object]] { return (Get-RepositoryResolvedPath "logistics/scripts/modules/$($args[0])") }
+    $folders.activities = [System.Func[Object, Object]] { return (Get-RepositoryResolvedPath "logistics/scripts/activities/$($args[0])") }
 }
 
 #Set aliases to maintain previous functionality
