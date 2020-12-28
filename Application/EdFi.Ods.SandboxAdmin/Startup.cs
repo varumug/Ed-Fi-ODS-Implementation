@@ -200,8 +200,7 @@ namespace EdFi.Ods.SandboxAdmin
 
             if (!string.IsNullOrEmpty(pathBase))
             {
-                pathBase = pathBase.Replace("/", "");
-                pathBase = "/" + pathBase;
+                pathBase = NormalizePathBase(pathBase);
                 app.UsePathBase(pathBase);
             }
             
@@ -240,6 +239,12 @@ namespace EdFi.Ods.SandboxAdmin
                         name: "default",
                         pattern: "{controller=Home}/{action=Index}/{id?}");
                 });
+
+            string NormalizePathBase(string pathBase)
+            {
+                pathBase = pathBase.TrimStart(new[] { '/' }).TrimEnd(new[] { '/' });
+                return "/" + pathBase;
+            }
         }
     }
 }

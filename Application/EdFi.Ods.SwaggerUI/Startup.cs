@@ -41,6 +41,14 @@ namespace EdFi.Ods.SwaggerUI
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            var pathBase = Configuration["PathBase"];
+
+            if (!string.IsNullOrEmpty(pathBase))
+            {
+                pathBase = NormalizePathBase(pathBase);
+                app.UsePathBase(pathBase);
+            }
+
             void AppSettingsDelegate(IApplicationBuilder app)
             {
                 app.Run(
@@ -72,6 +80,13 @@ namespace EdFi.Ods.SwaggerUI
             app.UseEdFiSwaggerUI();
 
             app.UseFileServer();
+
+            string NormalizePathBase(string pathBase)
+            {
+                pathBase = pathBase.TrimStart(new[] { '/' }).TrimEnd(new[] { '/' });
+                return "/" + pathBase;
+            }
+
         }
     }
 }
