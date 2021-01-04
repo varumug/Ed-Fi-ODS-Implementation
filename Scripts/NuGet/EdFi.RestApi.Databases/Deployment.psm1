@@ -57,7 +57,7 @@ function Initialize-DeploymentEnvironment {
         [string] $OdsTokens,
 
         [ValidateSet("minimal", "populated")]
-        [string] $OdsDatabaseTemplateName = "minimal",
+        [string] $OdsDatabaseTemplateName,
 
         [Alias('Transient')]
         [switch] $DropDatabases,
@@ -171,7 +171,7 @@ function Set-DeploymentSettings([hashtable] $Settings = @{ }) {
         Values set by this parameter will be merged overridding any previous values configured by this function.
     #>
 
-    $script:deploymentSettingsOverrides = Merge-Hashtables $script:deploymentSettingsOverrides, $Settings
+    $script:deploymentSettingsOverrides = $Settings
 
     return $script:deploymentSettingsOverrides
 }
@@ -187,16 +187,17 @@ function Get-DeploymentSettings {
         from a configuration file otherwise any configuration file changes will be ignored until the scripts are re-imported.
     #>
 
-    $mergedSettings = Get-MergedAppSettings $script:deploymentSettingsFiles 'Application/EdFi.Ods.WebApi'
+    $mergedSettings = Get-MergedAppSettings $script:deploymentSettingsFiles ((Get-ProjectTypes).WebApi)
 
     $mergedSettings = Merge-Hashtables $mergedSettings, $script:deploymentSettingsOverrides
 
-    $defaultSettings = (Get-DefaultDevelopmentSettingsByProject)['Application/EdFi.Ods.WebApi']
+    $defaultSettings = (Get-DefaultDevelopmentSettingsByProject)[((Get-ProjectTypes).WebApi)]
 
     if ([string]::IsNullOrWhiteSpace($mergedSettings.ApiSettings.Engine)) { $mergedSettings.ApiSettings.Engine = 'SQLServer' }
-    $defaultSettings = Merge-Hashtables $defaultSettings, (Get-DefaultDevelopmentSettingsByEngine)[$mergedSettings.ApiSettings.Engine]
+    $defaultSettings = Merge-Hashtables $defaultSettings, (Get-DefaultConnectionStringsByEngine)[$mergedSettings.ApiSettings.Engine]
+    $defaultSettings = Merge-Hashtables $defaultSettings, (Get-DefaultTemplateSettingsByEngine)[$mergedSettings.ApiSettings.Engine]
 
-    $defaultSettings = Add-ApplicationNameToConnectionStrings $defaultSettings 'EdFi.RestApi.Databases'
+    $defaultSettings = Add-ApplicationNameToConnectionStrings $defaultSettings ((Get-ProjectTypes).Databases)
 
     $mergedSettings = Merge-HashtablesOrDefaults $mergedSettings, $defaultSettings
 
@@ -257,7 +258,7 @@ $deploymentTasks = @{
         $odsConnectionStringKey = $settings.ApiSettings.ConnectionStringKeys[$odsDatabaseType]
         $databaseName = $odsDatabaseType
         $replacementTokens = @($databaseName)
-        if ($settings.OdsDatabaseTemplateName -eq 'populated') {
+        if ($settings.ApiSettings.OdsDatabaseTemplateName -eq 'populated') {
             $backupPath = Get-PopulatedTemplateBackupPathFromSettings $settings
         }
         else {

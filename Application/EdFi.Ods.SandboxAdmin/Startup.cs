@@ -14,11 +14,13 @@ using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Data.Entity;
 using EdFi.Common.Configuration;
+using EdFi.Common.Extensions;
 using EdFi.Ods.Sandbox.Admin.Contexts;
 using EdFi.Ods.SandboxAdmin.Filters;
 using EdFi.Ods.SandboxAdmin.Services;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Routing;
@@ -59,12 +61,16 @@ namespace EdFi.Ods.SandboxAdmin
             services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
             services.AddHttpContextAccessor();
 
-            services.AddScoped(serviceProvider =>
-            {
-                var actionContext = serviceProvider.GetRequiredService<IActionContextAccessor>().ActionContext;
-                var factory = serviceProvider.GetRequiredService<IUrlHelperFactory>();
-                return factory.GetUrlHelper(actionContext);
-            });
+            services.Configure<ForwardedHeadersOptions>(
+                options => { options.ForwardedHeaders = ForwardedHeaders.All; });
+
+            services.AddScoped(
+                serviceProvider =>
+                {
+                    var actionContext = serviceProvider.GetRequiredService<IActionContextAccessor>().ActionContext;
+                    var factory = serviceProvider.GetRequiredService<IUrlHelperFactory>();
+                    return factory.GetUrlHelper(actionContext);
+                });
 
             // Add Hangfire services.
             services.AddHangfire(
@@ -112,47 +118,48 @@ namespace EdFi.Ods.SandboxAdmin
             }
 
             services.AddAuthentication(IdentityConstants.ApplicationScheme)
-                .AddCookie(IdentityConstants.ApplicationScheme, options =>
-                {
-                    options.LoginPath = "/Account/Login";
-                });
+                .AddCookie(IdentityConstants.ApplicationScheme, options => { options.LoginPath = "/Account/Login"; });
 
             services.AddAuthorization();
+
             // Add the processing server as IHostedService
             services.AddHangfireServer();
 
             services.Configure<Dictionary<string, UserOptions>>(Configuration.GetSection("User"));
 
             services.AddControllersWithViews()
-                .AddNewtonsoftJson(options =>
-                {
-                    options.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
-                    options.SerializerSettings.DateTimeZoneHandling = DateTimeZoneHandling.Utc;
-                    options.SerializerSettings.DateParseHandling = DateParseHandling.None;
-                    options.SerializerSettings.Formatting = Formatting.Indented;
-                    options.SerializerSettings.ContractResolver = new DefaultContractResolver();
-                })
+                .AddNewtonsoftJson(
+                    options =>
+                    {
+                        options.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
+                        options.SerializerSettings.DateTimeZoneHandling = DateTimeZoneHandling.Utc;
+                        options.SerializerSettings.DateParseHandling = DateParseHandling.None;
+                        options.SerializerSettings.Formatting = Formatting.Indented;
+                        options.SerializerSettings.ContractResolver = new DefaultContractResolver();
+                    })
                 .AddControllersAsServices();
 
             services.AddMvc(
-                options =>
-                {
-                    options.Filters.Add(
-                        new SetCurrentUserInfoAttribute(
-                            () => Container.Resolve<ISecurityService>(), Container.Resolve<IHttpContextAccessor>()));
-                })
-                .AddNewtonsoftJson(options =>
-                {
-                    options.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
-                    options.SerializerSettings.DateTimeZoneHandling = DateTimeZoneHandling.Utc;
-                    options.SerializerSettings.DateParseHandling = DateParseHandling.None;
-                    options.SerializerSettings.Formatting = Formatting.Indented;
-                    options.SerializerSettings.ContractResolver = new DefaultContractResolver();
-                })
+                    options =>
+                    {
+                        options.Filters.Add(
+                            new SetCurrentUserInfoAttribute(
+                                () => Container.Resolve<ISecurityService>(), Container.Resolve<IHttpContextAccessor>()));
+                    })
+                .AddNewtonsoftJson(
+                    options =>
+                    {
+                        options.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
+                        options.SerializerSettings.DateTimeZoneHandling = DateTimeZoneHandling.Utc;
+                        options.SerializerSettings.DateParseHandling = DateParseHandling.None;
+                        options.SerializerSettings.Formatting = Formatting.Indented;
+                        options.SerializerSettings.ContractResolver = new DefaultContractResolver();
+                    })
                 .AddControllersAsServices();
 
             services.AddControllers()
-                .AddNewtonsoftJson(options =>
+                .AddNewtonsoftJson(
+                    options =>
                     {
                         options.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
                         options.SerializerSettings.DateTimeZoneHandling = DateTimeZoneHandling.Utc;
@@ -185,14 +192,25 @@ namespace EdFi.Ods.SandboxAdmin
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory loggerFactory)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory loggerFactory, IConfigurationRoot configuration)
         {
             loggerFactory.AddLog4Net();
 
+            var pathBase = configuration["PathBase"];
+
+            if (!string.IsNullOrEmpty(pathBase))
+            {
+                pathBase = pathBase.Trim('/');
+                pathBase = "/" + pathBase;
+                app.UsePathBase(pathBase);
+            }
+            
             Container = app.ApplicationServices.GetAutofacRoot();
 
             // Set EF Context
             DbConfiguration.SetConfiguration(new DatabaseEngineDbConfiguration(Container.Resolve<DatabaseEngine>()));
+
+            app.UseForwardedHeaders();
 
             if (env.IsDevelopment())
             {
