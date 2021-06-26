@@ -13,7 +13,7 @@ function Get-DefaultConfiguration([hashtable] $config = @{ }) {
     $config.binariesSourceUrl = 'http://get.enterprisedb.com/postgresql/'
     $config.binariesArchiveName = 'postgresql-{0}-2-windows-x64-binaries.zip'
     $config.binariesVersion = '12.2'
-    $config.binariesTempDirectory = Join-Path $env:temp 'PostgreSQL.Binaries'
+    $config.binariesTempDirectory = Join-Path (Get-Item $env:temp).FullName 'PostgreSQL.Binaries'
     $config.binariesArchiveExtractedName = 'pgsql'
 
     $config.archiveName = ($config.binariesArchiveName -f $config.binariesVersion)
