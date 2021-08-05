@@ -4,8 +4,10 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 $params = @{
-    sourceUrl = "https://odsassets.blob.core.windows.net/public/Glendale/EdFi_Ods_Glendale_v500_20200909.7z"
-    fileName  = "EdFi_Ods_Glendale_v500_20200909.7z"
+    sourceUrl = "https://odsassets.blob.core.windows.net/public/Glendale/EdFi_Ods_Glendale_v51_20210112_PG11.7z"
+    fileName  = "EdFi_Ods_Glendale_v51_20210112_PG11.7z"
 }
 
 & "$PSScriptRoot\..\Modules\get-populated-from-web.ps1" @params
+
+return "$PSScriptRoot\..\Database\EdFi_Ods_Glendale_v51_PG11.sql"
